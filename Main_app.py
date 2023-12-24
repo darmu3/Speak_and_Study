@@ -19,7 +19,7 @@ class MyApp(QMainWindow):
         self.central_widget = MainMenuWidget(self)
         self.setCentralWidget(self.central_widget)
 
-        self.center()  # Вызываем метод для центрирования окна
+        self.center()
 
     def center(self):
         # Получаем размер экрана
@@ -38,7 +38,7 @@ class MyApp(QMainWindow):
 if __name__ == '__main__':
     app = QApplication(sys.argv)
 
-    apply_stylesheet(app, theme='dark_blue.xml')
+    apply_stylesheet(app, theme='light_blue.xml')
 
     window = MyApp()
     window.show()

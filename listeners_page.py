@@ -1,9 +1,7 @@
 from PyQt5.QtCore import QEvent, QRegExp
 from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtWidgets import (
-    QWidget, QPushButton, QHBoxLayout, QFormLayout, QLabel, QLineEdit, QVBoxLayout,
-    QListWidget, QListWidgetItem, QMessageBox
-)
+from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QFormLayout, QLabel, QLineEdit, QVBoxLayout, \
+    QListWidget, QListWidgetItem, QMessageBox, QTextBrowser
 from conn_db import connect, close_db_connect
 
 
@@ -49,7 +47,7 @@ class ListenersPage(QWidget):
         self.age_label = QLabel("Возраст:")
 
         # Устанавливаем белый цвет текста
-        white_text_style = "color: white;"
+        white_text_style = "color: black;"
         self.last_name_edit.setStyleSheet(white_text_style)
         self.first_name_edit.setStyleSheet(white_text_style)
         self.patronymic_edit.setStyleSheet(white_text_style)
@@ -73,6 +71,12 @@ class ListenersPage(QWidget):
         details_layout.addWidget(self.phone_number_edit)
         details_layout.addWidget(self.age_label)
         details_layout.addWidget(self.age_edit)
+
+        # Вставьте следующий код в метод initUI после создания self.age_edit
+        self.courses_label = QLabel("Курсы:")
+        self.courses_participating_text_browser = QTextBrowser()
+        details_layout.addWidget(self.courses_label)
+        details_layout.addWidget(self.courses_participating_text_browser)
 
         # Кнопки "Редактировать информацию о слушателе" и "Удалить слушателя"
         buttons_area = QWidget()
@@ -113,6 +117,14 @@ class ListenersPage(QWidget):
 
         # Подключите метод clear_listener_selection к событию MouseButtonRelease на self
         self.installEventFilter(self)
+
+    def update_listeners(self):
+        # Обновление списка договоров
+        self.load_listeners()
+
+    def showEvent(self, event):
+        # Вызывается при каждом показе страницы
+        self.update_listeners()
 
     def eventFilter(self, obj, event):
         # Если произошло событие MouseButtonRelease на self, очистите выделение в listeners_list
@@ -177,11 +189,10 @@ class ListenersPage(QWidget):
         self.patronymic_edit.clear()
         self.phone_number_edit.clear()
         self.age_edit.clear()
+        self.courses_participating_text_browser.clear()
 
     def save_listener_changes(self):
         try:
-            print("Saving listener changes...")
-
             # Check if a listener is selected
             if not self.listeners_list.selectedItems():
                 self.show_warning_message("Выберите слушателя для редактирования.")
@@ -217,21 +228,26 @@ class ListenersPage(QWidget):
             print(f"New Data: {new_last_name}, {new_first_name}, {new_patronymic}, {new_phone_number}, {new_age}")
 
             # Проверяем, изменились ли данные
-            if (current_last_name, current_first_name, current_patronymic, current_phone_number, current_age) == (
-                    new_last_name, new_first_name, new_patronymic, new_phone_number, new_age
+            if (current_last_name, current_first_name, current_patronymic, current_phone_number, int(current_age)) == (
+                    new_last_name, new_first_name, new_patronymic, new_phone_number, int(new_age)
             ):
                 # Если данные не изменились, выходим без сохранения
                 print("No changes detected.")
+                self.clear_info()
+                self.listeners_list.clearSelection()
                 return
 
-            # Сохраняем изменения в БД (замените это соответствующим кодом для вашей БД)
-            connection = connect()
-            cursor = connection.cursor()
-            cursor.execute('UPDATE "Users" SET "second_name" = %s, "first_name" = %s, "patronymic" = %s, '
-                           '"phone_number" = %s, "age" = %s WHERE "user_id" = %s',
-                           (new_last_name, new_first_name, new_patronymic, new_phone_number, new_age, listener_id))
-            connection.commit()
-            close_db_connect(connection, cursor)
+            if 12 <= int(new_age) <= 120:
+                connection = connect()
+                cursor = connection.cursor()
+                cursor.execute('UPDATE "Users" SET "second_name" = %s, "first_name" = %s, "patronymic" = %s, '
+                               '"phone_number" = %s, "age" = %s WHERE "user_id" = %s',
+                               (new_last_name, new_first_name, new_patronymic, new_phone_number, new_age, listener_id))
+                connection.commit()
+                close_db_connect(connection, cursor)
+            else:
+                age_message = f"Возраст должен быть от 12 до 120 лет"
+                self.show_warning_message(age_message)
 
             # Обновляем список слушателей
             self.load_listeners()
@@ -283,8 +299,14 @@ class ListenersPage(QWidget):
 
         connection = connect()
         cursor = connection.cursor()
-        cursor.execute("SELECT * FROM \"Users\" WHERE user_id = %s", (listener_id,))
+        cursor.execute('SELECT * FROM "Users" WHERE user_id = %s', (listener_id,))
         listener_details = cursor.fetchone()
+
+        # Получаем информацию о курсах, на которых участвует слушатель
+        cursor.execute('SELECT "Courses".course_id, "Courses".name_course FROM "Courses" '
+                       'JOIN "usercourses" ON "Courses".course_id = "usercourses".course_id '
+                       'WHERE "usercourses".user_id = %s', (listener_id,))
+        courses_participating = cursor.fetchall()
         close_db_connect(connection, cursor)
 
         if listener_details:
@@ -296,6 +318,11 @@ class ListenersPage(QWidget):
             self.patronymic_edit.setText(patronymic)
             self.phone_number_edit.setText(phone_number)
             self.age_edit.setText(str(age))
+
+            # Отображение информации о курсах
+            courses_info = "\n".join(
+                [f"{course_id}: {course_name}" for course_id, course_name in courses_participating])
+            self.courses_participating_text_browser.setPlainText(f"{courses_info}\n")
 
     def load_listeners(self):
         connection = connect()

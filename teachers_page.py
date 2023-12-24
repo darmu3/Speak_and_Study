@@ -1,9 +1,8 @@
 from PyQt5.QtCore import QEvent, QRegExp
 from PyQt5.QtGui import QRegExpValidator
-from PyQt5.QtWidgets import (
-    QWidget, QPushButton, QHBoxLayout, QFormLayout, QLabel, QLineEdit, QVBoxLayout,
-    QListWidget, QListWidgetItem, QMessageBox, QDialog, QComboBox
-)
+from PyQt5.QtWidgets import QWidget, QPushButton, QHBoxLayout, QFormLayout, QLabel, QLineEdit, QVBoxLayout, \
+    QListWidget, QListWidgetItem, QMessageBox, QDialog
+
 from conn_db import connect, close_db_connect
 
 
@@ -11,6 +10,7 @@ class TeachersPage(QWidget):
     def __init__(self, parent):
         super().__init__()
         self.parent = parent
+        self.editing_mode = False  # Флаг для отслеживания режима редактирования
         self.initUI()
         self.load_teachers()
 
@@ -32,8 +32,6 @@ class TeachersPage(QWidget):
         self.education_edit = QLineEdit()
         self.speciality_edit = QLineEdit()
         self.seniority_edit = QLineEdit()
-        self.course_combobox = QComboBox()
-        # details_layout.addRow("Выберите курс:", self.course_combobox)
 
         # Add validators for fields
         name_validator = QRegExpValidator(QRegExp("[А-Яа-яЁё]+"))
@@ -51,10 +49,9 @@ class TeachersPage(QWidget):
         self.education_label = QLabel("Образование:")
         self.speciality_label = QLabel("Специальность:")
         self.seniority_label = QLabel("Стаж работы:")
-        self.course_label = QLabel("Курс:")
 
         # Set white text color
-        white_text_style = "color: white;"
+        white_text_style = "color: black;"
         self.last_name_edit.setStyleSheet(white_text_style)
         self.first_name_edit.setStyleSheet(white_text_style)
         self.patronymic_edit.setStyleSheet(white_text_style)
@@ -83,8 +80,6 @@ class TeachersPage(QWidget):
         details_layout.addWidget(self.speciality_edit)
         details_layout.addWidget(self.seniority_label)
         details_layout.addWidget(self.seniority_edit)
-        details_layout.addWidget(self.course_label)
-        details_layout.addWidget(self.course_combobox)
 
         # Buttons for editing teacher information and deleting teacher
         buttons_area = QWidget()
@@ -130,6 +125,23 @@ class TeachersPage(QWidget):
         # Connect the clear_teacher_selection method to the MouseButtonRelease event on self
         self.installEventFilter(self)
 
+    def update_teachers(self):
+        # Обновление списка договоров
+        self.load_teachers()
+
+    def showEvent(self, event):
+        # Вызывается при каждом показе страницы
+        self.update_teachers()
+
+    def set_add_validators(self, last_name_edit, first_name_edit, patronymic_edit, seniority_edit):
+        name_validator = QRegExpValidator(QRegExp("[А-Яа-яЁё]+"))
+        seniority_validator = QRegExpValidator(QRegExp("[0-9]+"))
+        last_name_edit.setValidator(name_validator)
+        first_name_edit.setValidator(name_validator)
+        patronymic_edit.setValidator(name_validator)
+        seniority_edit.setValidator(seniority_validator)
+        seniority_edit.setMaxLength(3)
+
     def eventFilter(self, obj, event):
         # If MouseButtonRelease event occurs on self, clear the selection in teachers_list
         if obj == self and event.type() == QEvent.MouseButtonRelease:
@@ -173,9 +185,11 @@ class TeachersPage(QWidget):
         if self.edit_teacher_button.text() == "Редактировать\nинформацию\nо преподавателе":
             self.edit_read_false()
             self.edit_teacher_button.setText("Сохранить\nизменения")
+            self.editing_mode = True  # Включите режим редактирования
         else:
             self.edit_read_true()
             self.edit_teacher_button.setText("Редактировать\nинформацию\nо преподавателе")
+            self.editing_mode = False  # Выключите режим редактирования
 
             # Save changes to the database
             self.save_teacher_changes()
@@ -198,54 +212,65 @@ class TeachersPage(QWidget):
         self.seniority_edit.clear()
 
     def add_teacher(self):
-        # Check if in edit mode
-        if self.edit_teacher_button.text() == "Сохранить\nизменения":
-            self.show_warning_message("Закончите редактирование перед добавлением нового преподавателя.")
-            return
-        # Create a QDialog for adding a new teacher
-        add_teacher_dialog = QDialog(self)
-        add_teacher_dialog.setWindowTitle("Добавить преподавателя")
+        try:
+            # Check if in edit mode
+            if self.edit_teacher_button.text() == "Сохранить\nизменения":
+                self.show_warning_message("Закончите редактирование перед добавлением нового преподавателя.")
+                return
 
-        # Create a layout for the dialog
-        add_teacher_layout = QFormLayout()
+            # Create a QDialog for adding a new teacher
+            add_teacher_dialog = QDialog(self)
+            add_teacher_dialog.setWindowTitle("Добавить преподавателя")
 
-        # QLineEdit for entering new teacher information
-        new_last_name_edit = QLineEdit()
-        new_first_name_edit = QLineEdit()
-        new_patronymic_edit = QLineEdit()
-        new_education_edit = QLineEdit()
-        new_speciality_edit = QLineEdit()
-        new_seniority_edit = QLineEdit()
+            # Create a layout for the dialog
+            add_teacher_layout = QFormLayout()
 
-        # Add QLabel and QLineEdit to the layout
-        add_teacher_layout.addRow("Фамилия:", new_last_name_edit)
-        add_teacher_layout.addRow("Имя:", new_first_name_edit)
-        add_teacher_layout.addRow("Отчество:", new_patronymic_edit)
-        add_teacher_layout.addRow("Образование:", new_education_edit)
-        add_teacher_layout.addRow("Специальность:", new_speciality_edit)
-        add_teacher_layout.addRow("Стаж работы:", new_seniority_edit)
+            # QLineEdit for entering new teacher information
+            new_last_name_edit = QLineEdit()
+            new_first_name_edit = QLineEdit()
+            new_patronymic_edit = QLineEdit()
+            new_education_edit = QLineEdit()
+            new_speciality_edit = QLineEdit()
+            new_seniority_edit = QLineEdit()
 
-        # Create buttons for adding and canceling
-        add_button = QPushButton("Добавить")
-        cancel_button = QPushButton("Отмена")
+            self.set_add_validators(new_last_name_edit, new_first_name_edit, new_patronymic_edit, new_seniority_edit)
 
-        # Connect the add_button to a method for adding the teacher
-        add_button.clicked.connect(lambda: self.save_new_teacher(add_teacher_dialog,
-                                                                 new_last_name_edit.text(),
-                                                                 new_first_name_edit.text(),
-                                                                 new_patronymic_edit.text(),
-                                                                 new_education_edit.text(),
-                                                                 new_speciality_edit.text(),
-                                                                 new_seniority_edit.text()))
+            # Add QLabel and QLineEdit to the layout
+            add_teacher_layout.addRow("Фамилия:", new_last_name_edit)
+            add_teacher_layout.addRow("Имя:", new_first_name_edit)
+            add_teacher_layout.addRow("Отчество:", new_patronymic_edit)
+            add_teacher_layout.addRow("Образование:", new_education_edit)
+            add_teacher_layout.addRow("Специальность:", new_speciality_edit)
+            add_teacher_layout.addRow("Стаж работы:", new_seniority_edit)
 
-        # Connect the cancel_button to close the dialog
-        cancel_button.clicked.connect(add_teacher_dialog.close)
+            # Create buttons for adding and canceling
+            add_button = QPushButton("Добавить")
+            cancel_button = QPushButton("Отмена")
 
-        # Add buttons to the layout
-        add_teacher_layout.addRow(add_button, cancel_button)
+            # Connect the add_button to a method for adding the teacher
+            add_button.clicked.connect(lambda: self.save_new_teacher(add_teacher_dialog,
+                                                                     new_last_name_edit.text(),
+                                                                     new_first_name_edit.text(),
+                                                                     new_patronymic_edit.text(),
+                                                                     new_education_edit.text(),
+                                                                     new_speciality_edit.text(),
+                                                                     new_seniority_edit.text()))
 
-        add_teacher_dialog.setLayout(add_teacher_layout)
-        add_teacher_dialog.exec_()
+            # Connect the cancel_button to close the dialog
+            cancel_button.clicked.connect(add_teacher_dialog.close)
+
+            # Add buttons to the layout
+            add_teacher_layout.addRow(add_button, cancel_button)
+
+            add_teacher_dialog.setLayout(add_teacher_layout)
+            print("Before showing the dialog")
+            add_teacher_dialog.exec_()
+            print("After showing the dialog")
+
+        except Exception as e:
+            print(f"Error in add_teacher: {e}")
+            # Display a message box with the error information
+            self.show_warning_message(f"Произошла ошибка при открытии диалогового окна: {e}")
 
     def save_new_teacher(self, dialog, last_name, first_name, patronymic, education, speciality, seniority):
         try:
@@ -254,12 +279,18 @@ class TeachersPage(QWidget):
                 self.show_warning_message("Заполните все поля.")
                 return
 
-            # Save the new teacher to the database (replace this with appropriate code for your database)
+            # Save the new teacher to the database
             connection = connect()
             cursor = connection.cursor()
-            cursor.execute('INSERT INTO "Teachers" ("second_name", "first_name", "patronymic", "education", '
-                           '"speciality", "seniority") VALUES (%s, %s, %s, %s, %s, %s)',
-                           (last_name, first_name, patronymic, education, speciality, seniority))
+            cursor.execute(
+                'INSERT INTO "Teachers" ("second_name", "first_name", "patronymic", "education", "speciality", "seniority") '
+                'VALUES (%s, %s, %s, %s, %s, %s) RETURNING teacher_id',
+                (last_name, first_name, patronymic, education, speciality, seniority)
+            )
+
+            # Commit the transaction to make sure the teacher is added before proceeding to the next steps
+            connection.commit()
+
             connection.commit()
             close_db_connect(connection, cursor)
 
@@ -270,7 +301,9 @@ class TeachersPage(QWidget):
             dialog.accept()
 
         except Exception as e:
-            # Handle the error (display a message or log it)
+            # Print the exception information to help diagnose the issue
+            print(f"Error in save_new_teacher: {e}")
+            # Display a message box with the error information
             self.show_warning_message(f"Произошла ошибка при добавлении преподавателя: {e}")
 
     def save_teacher_changes(self):
@@ -315,27 +348,31 @@ class TeachersPage(QWidget):
 
             # Check if data has changed
             if (current_last_name, current_first_name, current_patronymic, current_education, current_speciality,
-                current_seniority) == (new_last_name, new_first_name, new_patronymic, new_education, new_speciality,
-                                       new_seniority):
+                int(current_seniority)) == (
+            new_last_name, new_first_name, new_patronymic, new_education, new_speciality,
+            int(new_seniority)):
                 # If data has not changed, exit without saving
                 print("No changes detected.")
                 return
 
-            # Save changes to the database (replace this with appropriate code for your database)
-            connection = connect()
-            cursor = connection.cursor()
-            cursor.execute(
-                'UPDATE "Teachers" SET "second_name" = %s, "first_name" = %s, "patronymic" = %s, "education" = %s, '
-                '"speciality" = %s, "seniority" = %s WHERE "teacher_id" = %s',
-                (new_last_name, new_first_name, new_patronymic, new_education, new_speciality, new_seniority,
-                 teacher_id))
-            connection.commit()
-            close_db_connect(connection, cursor)
+            else:
+                # Save changes to the database (replace this with appropriate code for your database)
+                connection = connect()
+                cursor = connection.cursor()
+                cursor.execute(
+                    'UPDATE "Teachers" SET "second_name" = %s, "first_name" = %s, "patronymic" = %s, "education" = %s, '
+                    '"speciality" = %s, "seniority" = %s WHERE "teacher_id" = %s',
+                    (new_last_name, new_first_name, new_patronymic, new_education, new_speciality, new_seniority,
+                     teacher_id)
+                )
 
-            # Update the list of teachers
-            self.load_teachers()
+                connection.commit()
+                close_db_connect(connection, cursor)
 
-            self.clear_info()
+                # Update the list of teachers
+                self.load_teachers()
+
+                self.clear_info()
 
         except Exception as e:
             # Display a message with information about the phone number format in case of an error
