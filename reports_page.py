@@ -13,13 +13,11 @@ class ReportsPage(QWidget):
     def initUI(self):
         self.layout = QHBoxLayout()
 
-        # Область со списком отчетов
         reports_list_layout = QVBoxLayout()
         self.reports_list = QListWidget()
         self.reports_list.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         reports_list_layout.addWidget(self.reports_list)
 
-        # Область с описанием отчета
         report_description_layout = QVBoxLayout()
         report_description_label = QLabel("Подробная информация об отчете")
         self.report_description = QPlainTextEdit()
@@ -28,21 +26,17 @@ class ReportsPage(QWidget):
         report_description_layout.addWidget(report_description_label)
         report_description_layout.addWidget(self.report_description)
 
-        # Кнопка "Составить отчет"
         generate_report_button_layout = QVBoxLayout()
         generate_report_button = QPushButton("Составить отчет")
         generate_report_button.clicked.connect(self.generate_report)
         generate_report_button_layout.addWidget(generate_report_button)
 
-        # Добавляем все макеты в основной вертикальный макет
         self.layout.addLayout(reports_list_layout)
         self.layout.addLayout(report_description_layout)
         self.layout.addLayout(generate_report_button_layout)
 
-        # Установите макет для ReportsPage
         self.setLayout(self.layout)
 
-        # Загрузим список отчетов (в данном случае используем фиктивные данные)
         self.load_reports_list()
 
     def generate_report(self):
@@ -70,7 +64,6 @@ class ReportsPage(QWidget):
                    "Отчет о заполненности курсов"]
         self.reports_list.addItems(reports)
 
-    # Функция для отчета о заявках на участие в курсах
     def get_report_data_courses(self):
         connection = connect()
         cursor = connection.cursor()
@@ -98,7 +91,6 @@ class ReportsPage(QWidget):
 
         return report_text
 
-    # Функция для отчета о преподавателях и курсах, которые они ведут
     def get_report_data_teachers(self):
         connection = connect()
         cursor = connection.cursor()
@@ -128,7 +120,6 @@ class ReportsPage(QWidget):
 
         return report_text
 
-    # Функция для статистики по возрастным группам заявителей на курсы
     def get_report_data_age_groups(self):
         connection = connect()
         cursor = connection.cursor()

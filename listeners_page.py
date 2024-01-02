@@ -21,17 +21,21 @@ class ListenersPage(QWidget):
 
         label = QLabel("Подробная информация о\nслушателе:")
         details_layout.addRow(label)
-        label.setFixedHeight(30)
 
-        # Используем QLineEdit вместо QTextEdit
+        self.last_name_label = QLabel("Фамилия:")
+        self.first_name_label = QLabel("Имя:")
+        self.patronymic_label = QLabel("Отчество:")
+        self.phone_number_label = QLabel("Телефон:")
+        self.age_label = QLabel("Возраст:")
+        self.courses_label = QLabel("Курсы:")
         self.last_name_edit = QLineEdit()
         self.first_name_edit = QLineEdit()
         self.patronymic_edit = QLineEdit()
         self.phone_number_edit = QLineEdit()
         self.age_edit = QLineEdit()
+        self.courses_participating_text_browser = QTextBrowser()
 
-        # Добавляем валидаторы для фамилии, имени и отчества
-        name_validator = QRegExpValidator(QRegExp("[А-Яа-яЁё]+"))  # Разрешены только буквы русского алфавита
+        name_validator = QRegExpValidator(QRegExp("[А-Яа-яЁё]+"))
         age_validator = QRegExpValidator(QRegExp("[0-9]+"))
         self.last_name_edit.setValidator(name_validator)
         self.first_name_edit.setValidator(name_validator)
@@ -39,28 +43,12 @@ class ListenersPage(QWidget):
         self.age_edit.setValidator(age_validator)
         self.age_edit.setMaxLength(3)
 
-        # Используем QLabel для текста перед каждым QLineEdit
-        self.last_name_label = QLabel("Фамилия:")
-        self.first_name_label = QLabel("Имя:")
-        self.patronymic_label = QLabel("Отчество:")
-        self.phone_number_label = QLabel("Телефон:")
-        self.age_label = QLabel("Возраст:")
-
-        # Устанавливаем белый цвет текста
-        white_text_style = "color: black;"
-        self.last_name_edit.setStyleSheet(white_text_style)
-        self.first_name_edit.setStyleSheet(white_text_style)
-        self.patronymic_edit.setStyleSheet(white_text_style)
-        self.phone_number_edit.setStyleSheet(white_text_style)
-        self.age_edit.setStyleSheet(white_text_style)
-
         self.last_name_edit.setReadOnly(True)
         self.first_name_edit.setReadOnly(True)
         self.patronymic_edit.setReadOnly(True)
         self.phone_number_edit.setReadOnly(True)
         self.age_edit.setReadOnly(True)
 
-        # Добавляем QLabel и QLineEdit в QVBoxLayout
         details_layout.addWidget(self.last_name_label)
         details_layout.addWidget(self.last_name_edit)
         details_layout.addWidget(self.first_name_label)
@@ -71,14 +59,9 @@ class ListenersPage(QWidget):
         details_layout.addWidget(self.phone_number_edit)
         details_layout.addWidget(self.age_label)
         details_layout.addWidget(self.age_edit)
-
-        # Вставьте следующий код в метод initUI после создания self.age_edit
-        self.courses_label = QLabel("Курсы:")
-        self.courses_participating_text_browser = QTextBrowser()
         details_layout.addWidget(self.courses_label)
         details_layout.addWidget(self.courses_participating_text_browser)
 
-        # Кнопки "Редактировать информацию о слушателе" и "Удалить слушателя"
         buttons_area = QWidget()
         buttons_layout = QVBoxLayout()
         self.edit_listener_button = QPushButton("Редактировать\nинформацию\nо слушателе")
@@ -102,24 +85,18 @@ class ListenersPage(QWidget):
         listeners_layout.addWidget(self.listeners_list)
         listeners_area.setLayout(listeners_layout)
 
-        listeners_area.setMinimumWidth(300)
-
         layout.addWidget(listeners_area)
         layout.addWidget(details_area)
         layout.addWidget(buttons_area)
 
         self.setLayout(layout)
 
-        # Connect the "Редактировать информацию о слушателе" button to the toggle_edit_mode method
         self.edit_listener_button.clicked.connect(self.toggle_edit_mode)
-        # Connect the "Удалить слушателя" button to the delete_listener method
         delete_listener_button.clicked.connect(self.delete_listener)
 
-        # Подключите метод clear_listener_selection к событию MouseButtonRelease на self
         self.installEventFilter(self)
 
     def update_listeners(self):
-        # Обновление списка договоров
         self.load_listeners()
 
     def showEvent(self, event):
@@ -127,7 +104,6 @@ class ListenersPage(QWidget):
         self.update_listeners()
 
     def eventFilter(self, obj, event):
-        # Если произошло событие MouseButtonRelease на self, очистите выделение в listeners_list
         if obj == self and event.type() == QEvent.MouseButtonRelease:
             self.clear_listener_selection()
         return super().eventFilter(obj, event)
@@ -147,20 +123,31 @@ class ListenersPage(QWidget):
         self.age_edit.setReadOnly(False)
 
     def clear_listener_selection(self):
-        # Очистите выделение в списке слушателей
         self.listeners_list.clearSelection()
 
         self.clear_info()
 
-        # Установите кнопку обратно в режим "Редактировать информацию о слушателе" только тогда, если она в режиме
-        # сохранения изменений
         if self.edit_listener_button.text() == "Сохранить\nизменения":
             self.edit_listener_button.setText("Редактировать\nинформацию\nо слушателе")
 
         self.edit_read_true()
 
+    def show_warning_message(self, message):
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Warning)
+        msg_box.setWindowTitle("Внимание!")
+        msg_box.setText(message)
+        msg_box.exec_()
+
+    def clear_info(self):
+        self.last_name_edit.clear()
+        self.first_name_edit.clear()
+        self.patronymic_edit.clear()
+        self.phone_number_edit.clear()
+        self.age_edit.clear()
+        self.courses_participating_text_browser.clear()
+
     def toggle_edit_mode(self):
-        # Check if a listener is selected
         if not self.listeners_list.selectedItems():
             self.show_warning_message("Выберите слушателя для редактирования.")
             return
@@ -172,37 +159,17 @@ class ListenersPage(QWidget):
             self.edit_read_true()
             self.edit_listener_button.setText("Редактировать\nинформацию\nо слушателе")
 
-            # Сохраняем изменения в БД
             self.save_listener_changes()
-
-    def show_warning_message(self, message):
-        msg_box = QMessageBox()
-        msg_box.setIcon(QMessageBox.Warning)
-        msg_box.setWindowTitle("Внимание!")
-        msg_box.setText(message)
-        msg_box.exec_()
-
-    def clear_info(self):
-        # Сбросить текст в QLineEdit
-        self.last_name_edit.clear()
-        self.first_name_edit.clear()
-        self.patronymic_edit.clear()
-        self.phone_number_edit.clear()
-        self.age_edit.clear()
-        self.courses_participating_text_browser.clear()
 
     def save_listener_changes(self):
         try:
-            # Check if a listener is selected
             if not self.listeners_list.selectedItems():
                 self.show_warning_message("Выберите слушателя для редактирования.")
                 return
 
-            # Получаем идентификатор слушателя из списка слушателей
             selected_item = self.listeners_list.selectedItems()[0]
             listener_id = selected_item.data(1)
 
-            # Получаем текущие данные из БД
             connection = connect()
             cursor = connection.cursor()
             cursor.execute('SELECT * FROM "Users" WHERE "user_id" = %s', (listener_id,))
@@ -216,7 +183,6 @@ class ListenersPage(QWidget):
             user_id, current_last_name, current_first_name, current_patronymic, current_phone_number, current_age = \
                 current_data
 
-            # Получаем новые данные из QLineEdit
             new_last_name = self.last_name_edit.text()
             new_first_name = self.first_name_edit.text()
             new_patronymic = self.patronymic_edit.text()
@@ -224,14 +190,13 @@ class ListenersPage(QWidget):
             new_age = self.age_edit.text()
 
             print(
-                f"Current Data: {current_last_name}, {current_first_name}, {current_patronymic}, {current_phone_number}, {current_age}")
+                f"Current Data: {current_last_name}, {current_first_name}, {current_patronymic}, "
+                f"{current_phone_number}, {current_age}")
             print(f"New Data: {new_last_name}, {new_first_name}, {new_patronymic}, {new_phone_number}, {new_age}")
 
-            # Проверяем, изменились ли данные
             if (current_last_name, current_first_name, current_patronymic, current_phone_number, int(current_age)) == (
                     new_last_name, new_first_name, new_patronymic, new_phone_number, int(new_age)
             ):
-                # Если данные не изменились, выходим без сохранения
                 print("No changes detected.")
                 self.clear_info()
                 self.listeners_list.clearSelection()
@@ -249,29 +214,24 @@ class ListenersPage(QWidget):
                 age_message = f"Возраст должен быть от 12 до 120 лет"
                 self.show_warning_message(age_message)
 
-            # Обновляем список слушателей
             self.load_listeners()
 
             self.clear_info()
 
         except Exception as e:
-            # При возникновении ошибки выведите сообщение с информацией о формате номера телефона
             error_message = f"Произошла ошибка при сохранении изменений: {e}\n\n" \
                             "Формат номера телефона должен быть 8(XXX)XXX-XX-XX."
             self.show_warning_message(error_message)
 
     def delete_listener(self):
         try:
-            # Check if a listener is selected
             if not self.listeners_list.selectedItems():
                 self.show_warning_message("Выберите слушателя для удаления.")
                 return
 
-            # Получаем идентификатор слушателя из списка слушателей
             selected_item = self.listeners_list.selectedItems()[0]
             listener_id = selected_item.data(1)
 
-            # Запрос на подтверждение удаления
             confirm_message = "Вы уверены, что хотите удалить этого слушателя?"
             confirm_result = QMessageBox.question(self, 'Подтверждение удаления', confirm_message,
                                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -279,14 +239,12 @@ class ListenersPage(QWidget):
             if confirm_result == QMessageBox.No:
                 return
 
-            # Удаляем слушателя из БД (замените это соответствующим кодом для вашей БД)
             connection = connect()
             cursor = connection.cursor()
             cursor.execute('DELETE FROM "Users" WHERE "user_id" = %s', (listener_id,))
             connection.commit()
             close_db_connect(connection, cursor)
 
-            # Обновляем список слушателей
             self.load_listeners()
 
             self.clear_info()
@@ -302,7 +260,6 @@ class ListenersPage(QWidget):
         cursor.execute('SELECT * FROM "Users" WHERE user_id = %s', (listener_id,))
         listener_details = cursor.fetchone()
 
-        # Получаем информацию о курсах, на которых участвует слушатель
         cursor.execute('SELECT "Courses".course_id, "Courses".name_course FROM "Courses" '
                        'JOIN "usercourses" ON "Courses".course_id = "usercourses".course_id '
                        'WHERE "usercourses".user_id = %s', (listener_id,))
@@ -312,14 +269,12 @@ class ListenersPage(QWidget):
         if listener_details:
             user_id, last_name, first_name, patronymic, phone_number, age = listener_details
 
-            # Отображение подробной информации о слушателе
             self.last_name_edit.setText(last_name)
             self.first_name_edit.setText(first_name)
             self.patronymic_edit.setText(patronymic)
             self.phone_number_edit.setText(phone_number)
             self.age_edit.setText(str(age))
 
-            # Отображение информации о курсах
             courses_info = "\n".join(
                 [f"{course_id}: {course_name}" for course_id, course_name in courses_participating])
             self.courses_participating_text_browser.setPlainText(f"{courses_info}\n")
@@ -338,7 +293,6 @@ class ListenersPage(QWidget):
 
         self.listeners_list.clear()
 
-        # Сортируем слушателей по user_id
         sorted_listeners = sorted(listeners, key=lambda x: x[0])
 
         for user_id, second_name, first_name, patronymic, phone_number, age in sorted_listeners:
@@ -347,7 +301,6 @@ class ListenersPage(QWidget):
             item.setData(1, user_id)
             self.listeners_list.addItem(item)
 
-        # Устанавливаем текущий элемент после обновления списка
         for i in range(self.listeners_list.count()):
             item = self.listeners_list.item(i)
             if item.data(1) == current_user_id:

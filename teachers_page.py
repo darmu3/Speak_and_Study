@@ -17,7 +17,6 @@ class TeachersPage(QWidget):
     def initUI(self):
         layout = QHBoxLayout()
 
-        # Details area for teacher information
         details_area = QWidget()
         details_layout = QFormLayout()
 
@@ -25,7 +24,12 @@ class TeachersPage(QWidget):
         details_layout.addRow(label)
         label.setFixedHeight(30)
 
-        # QLineEdit for teacher information
+        self.last_name_label = QLabel("Фамилия:")
+        self.first_name_label = QLabel("Имя:")
+        self.patronymic_label = QLabel("Отчество:")
+        self.education_label = QLabel("Образование:")
+        self.speciality_label = QLabel("Специальность:")
+        self.seniority_label = QLabel("Стаж работы:")
         self.last_name_edit = QLineEdit()
         self.first_name_edit = QLineEdit()
         self.patronymic_edit = QLineEdit()
@@ -33,33 +37,6 @@ class TeachersPage(QWidget):
         self.speciality_edit = QLineEdit()
         self.seniority_edit = QLineEdit()
 
-        # Add validators for fields
-        name_validator = QRegExpValidator(QRegExp("[А-Яа-яЁё]+"))
-        seniority_validator = QRegExpValidator(QRegExp("[0-9]+"))
-        self.last_name_edit.setValidator(name_validator)
-        self.first_name_edit.setValidator(name_validator)
-        self.patronymic_edit.setValidator(name_validator)
-        self.seniority_edit.setValidator(seniority_validator)
-        self.seniority_edit.setMaxLength(3)
-
-        # QLabel for text before each QLineEdit
-        self.last_name_label = QLabel("Фамилия:")
-        self.first_name_label = QLabel("Имя:")
-        self.patronymic_label = QLabel("Отчество:")
-        self.education_label = QLabel("Образование:")
-        self.speciality_label = QLabel("Специальность:")
-        self.seniority_label = QLabel("Стаж работы:")
-
-        # Set white text color
-        white_text_style = "color: black;"
-        self.last_name_edit.setStyleSheet(white_text_style)
-        self.first_name_edit.setStyleSheet(white_text_style)
-        self.patronymic_edit.setStyleSheet(white_text_style)
-        self.education_edit.setStyleSheet(white_text_style)
-        self.speciality_edit.setStyleSheet(white_text_style)
-        self.seniority_edit.setStyleSheet(white_text_style)
-
-        # Set fields as read-only initially
         self.last_name_edit.setReadOnly(True)
         self.first_name_edit.setReadOnly(True)
         self.patronymic_edit.setReadOnly(True)
@@ -67,7 +44,6 @@ class TeachersPage(QWidget):
         self.speciality_edit.setReadOnly(True)
         self.seniority_edit.setReadOnly(True)
 
-        # Add QLabel and QLineEdit to QVBoxLayout
         details_layout.addWidget(self.last_name_label)
         details_layout.addWidget(self.last_name_edit)
         details_layout.addWidget(self.first_name_label)
@@ -81,7 +57,6 @@ class TeachersPage(QWidget):
         details_layout.addWidget(self.seniority_label)
         details_layout.addWidget(self.seniority_edit)
 
-        # Buttons for editing teacher information and deleting teacher
         buttons_area = QWidget()
         buttons_layout = QVBoxLayout()
         self.edit_teacher_button = QPushButton("Редактировать\nинформацию\nо преподавателе")
@@ -97,7 +72,6 @@ class TeachersPage(QWidget):
 
         details_area.setLayout(details_layout)
 
-        # Area for teachers
         teachers_area = QWidget()
         teachers_layout = QVBoxLayout()
         label = QLabel("Преподаватели:")
@@ -107,26 +81,19 @@ class TeachersPage(QWidget):
         teachers_layout.addWidget(self.teachers_list)
         teachers_area.setLayout(teachers_layout)
 
-        teachers_area.setMinimumWidth(300)
-
         layout.addWidget(teachers_area)
         layout.addWidget(details_area)
         layout.addWidget(buttons_area)
 
         self.setLayout(layout)
 
-        # Connect the "Редактировать информацию о преподавателе" button to the toggle_edit_mode method
         self.edit_teacher_button.clicked.connect(self.toggle_edit_mode)
-        # Connect the "Удалить преподавателя" button to the delete_teacher method
         delete_teacher_button.clicked.connect(self.delete_teacher)
-        # Connect the "Добавить преподавателя" button to the add_teacher method
         add_teacher_button.clicked.connect(self.add_teacher)
 
-        # Connect the clear_teacher_selection method to the MouseButtonRelease event on self
         self.installEventFilter(self)
 
     def update_teachers(self):
-        # Обновление списка договоров
         self.load_teachers()
 
     def showEvent(self, event):
@@ -143,7 +110,6 @@ class TeachersPage(QWidget):
         seniority_edit.setMaxLength(3)
 
     def eventFilter(self, obj, event):
-        # If MouseButtonRelease event occurs on self, clear the selection in teachers_list
         if obj == self and event.type() == QEvent.MouseButtonRelease:
             self.clear_teacher_selection()
         return super().eventFilter(obj, event)
@@ -165,35 +131,14 @@ class TeachersPage(QWidget):
         self.seniority_edit.setReadOnly(False)
 
     def clear_teacher_selection(self):
-        # Clear the selection in the teachers_list
         self.teachers_list.clearSelection()
 
         self.clear_info()
 
-        # Set the button back to "Редактировать информацию о преподавателе" only if it is in save changes mode
         if self.edit_teacher_button.text() == "Сохранить\nизменения":
             self.edit_teacher_button.setText("Редактировать\nинформацию\nо преподавателе")
 
         self.edit_read_true()
-
-    def toggle_edit_mode(self):
-        # Check if a teacher is selected
-        if not self.teachers_list.selectedItems():
-            self.show_warning_message("Выберите преподавателя для редактирования.")
-            return
-
-        if self.edit_teacher_button.text() == "Редактировать\nинформацию\nо преподавателе":
-            self.edit_read_false()
-            self.edit_teacher_button.setText("Сохранить\nизменения")
-            self.editing_mode = True  # Включите режим редактирования
-        else:
-            self.edit_read_true()
-            self.edit_teacher_button.setText("Редактировать\nинформацию\nо преподавателе")
-            self.editing_mode = False  # Выключите режим редактирования
-
-            # Save changes to the database
-            self.save_teacher_changes()
-            self.clear_teacher_selection()
 
     def show_warning_message(self, message):
         msg_box = QMessageBox()
@@ -203,7 +148,6 @@ class TeachersPage(QWidget):
         msg_box.exec_()
 
     def clear_info(self):
-        # Clear text in QLineEdits
         self.last_name_edit.clear()
         self.first_name_edit.clear()
         self.patronymic_edit.clear()
@@ -211,21 +155,33 @@ class TeachersPage(QWidget):
         self.speciality_edit.clear()
         self.seniority_edit.clear()
 
+    def toggle_edit_mode(self):
+        if not self.teachers_list.selectedItems():
+            self.show_warning_message("Выберите преподавателя для редактирования.")
+            return
+
+        if self.edit_teacher_button.text() == "Редактировать\nинформацию\nо преподавателе":
+            self.edit_read_false()
+            self.edit_teacher_button.setText("Сохранить\nизменения")
+            self.editing_mode = True
+        else:
+            self.edit_read_true()
+            self.edit_teacher_button.setText("Редактировать\nинформацию\nо преподавателе")
+            self.editing_mode = False
+            self.save_teacher_changes()
+            self.clear_teacher_selection()
+
     def add_teacher(self):
         try:
-            # Check if in edit mode
             if self.edit_teacher_button.text() == "Сохранить\nизменения":
                 self.show_warning_message("Закончите редактирование перед добавлением нового преподавателя.")
                 return
 
-            # Create a QDialog for adding a new teacher
             add_teacher_dialog = QDialog(self)
             add_teacher_dialog.setWindowTitle("Добавить преподавателя")
 
-            # Create a layout for the dialog
             add_teacher_layout = QFormLayout()
 
-            # QLineEdit for entering new teacher information
             new_last_name_edit = QLineEdit()
             new_first_name_edit = QLineEdit()
             new_patronymic_edit = QLineEdit()
@@ -235,7 +191,6 @@ class TeachersPage(QWidget):
 
             self.set_add_validators(new_last_name_edit, new_first_name_edit, new_patronymic_edit, new_seniority_edit)
 
-            # Add QLabel and QLineEdit to the layout
             add_teacher_layout.addRow("Фамилия:", new_last_name_edit)
             add_teacher_layout.addRow("Имя:", new_first_name_edit)
             add_teacher_layout.addRow("Отчество:", new_patronymic_edit)
@@ -243,11 +198,9 @@ class TeachersPage(QWidget):
             add_teacher_layout.addRow("Специальность:", new_speciality_edit)
             add_teacher_layout.addRow("Стаж работы:", new_seniority_edit)
 
-            # Create buttons for adding and canceling
             add_button = QPushButton("Добавить")
             cancel_button = QPushButton("Отмена")
 
-            # Connect the add_button to a method for adding the teacher
             add_button.clicked.connect(lambda: self.save_new_teacher(add_teacher_dialog,
                                                                      new_last_name_edit.text(),
                                                                      new_first_name_edit.text(),
@@ -256,10 +209,8 @@ class TeachersPage(QWidget):
                                                                      new_speciality_edit.text(),
                                                                      new_seniority_edit.text()))
 
-            # Connect the cancel_button to close the dialog
             cancel_button.clicked.connect(add_teacher_dialog.close)
 
-            # Add buttons to the layout
             add_teacher_layout.addRow(add_button, cancel_button)
 
             add_teacher_dialog.setLayout(add_teacher_layout)
@@ -269,57 +220,47 @@ class TeachersPage(QWidget):
 
         except Exception as e:
             print(f"Error in add_teacher: {e}")
-            # Display a message box with the error information
             self.show_warning_message(f"Произошла ошибка при открытии диалогового окна: {e}")
 
     def save_new_teacher(self, dialog, last_name, first_name, patronymic, education, speciality, seniority):
         try:
-            # Check if any of the fields is empty
             if not last_name or not first_name or not patronymic or not education or not speciality or not seniority:
                 self.show_warning_message("Заполните все поля.")
                 return
 
-            # Save the new teacher to the database
             connection = connect()
             cursor = connection.cursor()
             cursor.execute(
-                'INSERT INTO "Teachers" ("second_name", "first_name", "patronymic", "education", "speciality", "seniority") '
+                'INSERT INTO "Teachers" ("second_name", "first_name", "patronymic", "education", "speciality", '
+                '"seniority")'
                 'VALUES (%s, %s, %s, %s, %s, %s) RETURNING teacher_id',
                 (last_name, first_name, patronymic, education, speciality, seniority)
             )
 
-            # Commit the transaction to make sure the teacher is added before proceeding to the next steps
             connection.commit()
 
             connection.commit()
             close_db_connect(connection, cursor)
 
-            # Update the list of teachers
             self.load_teachers()
 
-            # Close the dialog
             dialog.accept()
 
         except Exception as e:
-            # Print the exception information to help diagnose the issue
             print(f"Error in save_new_teacher: {e}")
-            # Display a message box with the error information
             self.show_warning_message(f"Произошла ошибка при добавлении преподавателя: {e}")
 
     def save_teacher_changes(self):
         try:
             print("Saving teacher changes...")
 
-            # Check if a teacher is selected
             if not self.teachers_list.selectedItems():
                 self.show_warning_message("Выберите преподавателя для редактирования.")
                 return
 
-            # Get teacher_id from the teachers_list
             selected_item = self.teachers_list.selectedItems()[0]
             teacher_id = selected_item.data(1)
 
-            # Get current data from the database
             connection = connect()
             cursor = connection.cursor()
             cursor.execute('SELECT * FROM "Teachers" WHERE "teacher_id" = %s', (teacher_id,))
@@ -333,7 +274,6 @@ class TeachersPage(QWidget):
             teacher_id, current_last_name, current_first_name, current_patronymic, current_education, \
                 current_speciality, current_seniority = current_data
 
-            # Get new data from QLineEdits
             new_last_name = self.last_name_edit.text()
             new_first_name = self.first_name_edit.text()
             new_patronymic = self.patronymic_edit.text()
@@ -342,21 +282,19 @@ class TeachersPage(QWidget):
             new_seniority = self.seniority_edit.text()
 
             print(
-                f"Current Data: {current_last_name}, {current_first_name}, {current_patronymic}, {current_education}, {current_speciality}, {current_seniority}")
+                f"Current Data: {current_last_name}, {current_first_name}, {current_patronymic}, {current_education}, "
+                f"{current_speciality}, {current_seniority}")
             print(
-                f"New Data: {new_last_name}, {new_first_name}, {new_patronymic}, {new_education}, {new_speciality}, {new_seniority}")
+                f"New Data: {new_last_name}, {new_first_name}, {new_patronymic}, {new_education}, {new_speciality}, "
+                f"{new_seniority}")
 
-            # Check if data has changed
             if (current_last_name, current_first_name, current_patronymic, current_education, current_speciality,
-                int(current_seniority)) == (
-            new_last_name, new_first_name, new_patronymic, new_education, new_speciality,
-            int(new_seniority)):
-                # If data has not changed, exit without saving
+                int(current_seniority)) == (new_last_name, new_first_name, new_patronymic, new_education,
+                                            new_speciality, int(new_seniority)):
                 print("No changes detected.")
                 return
 
             else:
-                # Save changes to the database (replace this with appropriate code for your database)
                 connection = connect()
                 cursor = connection.cursor()
                 cursor.execute(
@@ -375,27 +313,22 @@ class TeachersPage(QWidget):
                 self.clear_info()
 
         except Exception as e:
-            # Display a message with information about the phone number format in case of an error
             error_message = f"Произошла ошибка при сохранении изменений: {e}\n\n" \
                             "Формат записи стажа работы — XXX."
             self.show_warning_message(error_message)
 
     def delete_teacher(self):
-        # Check if in edit mode
         if self.edit_teacher_button.text() == "Сохранить\nизменения":
             self.show_warning_message("Закончите редактирование перед удалением преподавателя.")
             return
         try:
-            # Check if a teacher is selected
             if not self.teachers_list.selectedItems():
                 self.show_warning_message("Выберите преподавателя для удаления.")
                 return
 
-            # Get teacher_id from the teachers_list
             selected_item = self.teachers_list.selectedItems()[0]
             teacher_id = selected_item.data(1)
 
-            # Ask for confirmation before deletion
             confirm_message = "Вы уверены, что хотите удалить этого преподавателя?"
             confirm_result = QMessageBox.question(self, 'Подтверждение удаления', confirm_message,
                                                   QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
@@ -403,14 +336,12 @@ class TeachersPage(QWidget):
             if confirm_result == QMessageBox.No:
                 return
 
-            # Remove the teacher from the database (replace this with appropriate code for your database)
             connection = connect()
             cursor = connection.cursor()
             cursor.execute('DELETE FROM "Teachers" WHERE "teacher_id" = %s', (teacher_id,))
             connection.commit()
             close_db_connect(connection, cursor)
 
-            # Update the list of teachers
             self.load_teachers()
 
             self.clear_info()
@@ -430,7 +361,6 @@ class TeachersPage(QWidget):
         if teacher_details:
             teacher_id, last_name, first_name, patronymic, education, speciality, seniority = teacher_details
 
-            # Display detailed information about the teacher
             self.last_name_edit.setText(last_name)
             self.first_name_edit.setText(first_name)
             self.patronymic_edit.setText(patronymic)
@@ -452,7 +382,6 @@ class TeachersPage(QWidget):
 
         self.teachers_list.clear()
 
-        # Sort teachers by teacher_id
         sorted_teachers = sorted(teachers, key=lambda x: x[0])
 
         for teacher_id, last_name, first_name, patronymic, education, speciality, seniority in sorted_teachers:
@@ -461,7 +390,6 @@ class TeachersPage(QWidget):
             item.setData(1, teacher_id)
             self.teachers_list.addItem(item)
 
-        # Set the current item after updating the list
         for i in range(self.teachers_list.count()):
             item = self.teachers_list.item(i)
             if item.data(1) == current_teacher_id:

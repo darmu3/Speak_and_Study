@@ -25,19 +25,16 @@ class MainMenuWidget(QWidget):
     def initUI(self):
         self.is_request_selected = False  # Флаг для отслеживания выбора заявки
 
-        # Область с кнопками
         self.taskbar_layout = QVBoxLayout()
 
         self.pages = QStackedWidget()
 
-        # Создаем кнопки для страниц
         page_names = ["Главное меню", "Слушатели", "Курсы", "Преподаватели", "Договоры", "Отчеты"]
         for i, page_name in enumerate(page_names):
             button = QPushButton(page_name)
             button.clicked.connect(self.show_page(i))
             self.taskbar_layout.addWidget(button)
 
-        # Создаем виджеты страниц
         self.create_main_menu_page()
         self.create_listeners_page()
         self.create_course_page()
@@ -45,7 +42,6 @@ class MainMenuWidget(QWidget):
         self.create_contracts_page()
         self.create_reports_page()
 
-        # Обработчик для выбора заявки в списке
         self.requests_list.itemClicked.connect(self.show_request_details)
 
         # Размещаем виджеты с кнопками и страницами в основном макете
@@ -53,7 +49,6 @@ class MainMenuWidget(QWidget):
         main_layout.addLayout(self.taskbar_layout)
         main_layout.addWidget(self.pages)
 
-        # Добавляем горячую клавишу F5 для загрузки заявок
         reload_shortcut = QShortcut(QKeySequence(Qt.Key_F5), self)
         reload_shortcut.activated.connect(self.load_requests)
 
@@ -62,7 +57,6 @@ class MainMenuWidget(QWidget):
         self.installEventFilter(self)
 
     def eventFilter(self, obj, event):
-        # Если произошло событие MouseButtonRelease на self, очистите выделение в listeners_list
         if obj == self and event.type() == QEvent.MouseButtonRelease:
             self.clear_listener_selection()
         return super().eventFilter(obj, event)
@@ -105,7 +99,6 @@ class MainMenuWidget(QWidget):
         details_layout.addWidget(self.details_text)
         details_area.setLayout(details_layout)
 
-        # Кнопки "Составить договор" и "Отказать"
         buttons_area = QWidget()
         buttons_layout = QVBoxLayout()
         compose_contract_button = QPushButton("Составить договор")
@@ -127,7 +120,6 @@ class MainMenuWidget(QWidget):
         self.pages.addWidget(page)
 
     def update_requests(self):
-        # Обновление списка договоров
         self.load_requests()
 
     def showEvent(self, event):
@@ -141,15 +133,13 @@ class MainMenuWidget(QWidget):
         return handler
 
     def load_requests(self):
-        # Соединение с базой данных
         connection = connect()
 
-        # Создание курсора для выполнения SQL-запросов
         cursor = connection.cursor()
 
-        # Выборка не просмотренных заявок из базы данных с сортировкой по возрастанию
         cursor.execute(
-            'SELECT r.request_id, r.first_name, r.second_name, r.patronymic, r.phone_number, r.age, r.status, r.course_id '
+            'SELECT r.request_id, r.first_name, r.second_name, r.patronymic, r.phone_number, r.age, r.status, '
+            'r.course_id '
             'FROM "Requests" r '
             'WHERE r.status = FALSE '
             'ORDER BY r.request_id ASC'
@@ -159,29 +149,26 @@ class MainMenuWidget(QWidget):
 
         close_db_connect(connection, cursor)
 
-        # Очистка списка заявок
         self.requests_list.clear()
 
-        # Добавление заявок в список
         for request in requests:
             request_id, first_name, second_name, patronymic, phone_number, age, course_id, status = request
             item_text = f"Заявка № {request_id}"
             item = QListWidgetItem(item_text)
-            item.setData(1, request_id)  # Дополнительные данные для хранения идентификатора заявки
+            item.setData(1, request_id)
             self.requests_list.addItem(item)
 
     def show_request_details(self, item):
-        # Получение идентификатора заявки из дополнительных данных
         request_id = item.data(1)
 
         self.is_request_selected = True
 
-        # Получение подробной информации о заявке из базы данных
         connection = connect()
 
         cursor = connection.cursor()
         cursor.execute(
-            'SELECT r.request_id, r.first_name, r.second_name, r.age, r.status, r.patronymic, r.phone_number, c.name_course '
+            'SELECT r.request_id, r.first_name, r.second_name, r.age, r.status, r.patronymic, r.phone_number, '
+            'c.name_course '
             'FROM "Requests" r '
             'JOIN "Courses" c ON r.course_id = c.course_id '
             'WHERE r.request_id = %s',
@@ -203,7 +190,6 @@ class MainMenuWidget(QWidget):
         if not self.is_request_selected:
             QMessageBox.warning(self, 'Предупреждение', 'Выберите заявку перед составлением договора')
             return
-        # Define a dictionary mapping English month names to Russian month names
         month_translation = {
             'January': 'января',
             'February': 'февраля',
@@ -219,31 +205,27 @@ class MainMenuWidget(QWidget):
             'December': 'декабря'
         }
 
-        # Загрузка шаблона договора
         template_path = 'C:/Users/Александр/PycharmProjects/Course_app/основные файлы/Договор.docx'
         doc = Document(template_path)
 
-        # Определение даты начала договора (на 7 дней больше, чем текущая дата)
         start_date = datetime.now() + timedelta(days=7)
 
         end_date = datetime.now() + timedelta(days=180)
 
-        # Подключение к базе данных
         connection = connect()
         cursor = connection.cursor()
 
         try:
-            # Получение данных о заявке
             request_id = self.requests_list.currentItem().data(1)
             cursor.execute(
-                'SELECT r.request_id, r.first_name, r.second_name, r.age, r.status, r.patronymic, r.phone_number, r.course_id, c.name_course '
+                'SELECT r.request_id, r.first_name, r.second_name, r.age, r.status, r.patronymic, r.phone_number, '
+                'r.course_id, c.name_course '
                 'FROM "Requests" r '
                 'JOIN "Courses" c ON r.course_id = c.course_id '
                 'WHERE r.request_id = %s',
                 (request_id,)
             )
             request_details = cursor.fetchone()
-            # Получение следующего номера договора
             cursor.execute('SELECT MAX(contract_id) FROM "Contracts"')
             last_contract_id = cursor.fetchone()[0]
 
@@ -252,7 +234,6 @@ class MainMenuWidget(QWidget):
             else:
                 new_contract_id = last_contract_id + 1
 
-            # Сохранение информации о договоре в базе данных
             cursor.execute(
                 'INSERT INTO "Contracts" (contract_id, contract_date, contract_file, user_id, request_id, signed) '
                 'VALUES (%s, %s, %s, %s, %s, %s)',
@@ -260,14 +241,13 @@ class MainMenuWidget(QWidget):
             )
 
             if request_details:
-                # Получение данных о курсе из заявки
-                request_id, first_name, second_name, age, status, patronymic, phone_number, course_id, course_name = request_details
+                request_id, first_name, second_name, age, status, patronymic, phone_number, course_id, course_name =\
+                    request_details
 
-                # Замена меток в документе на соответствующие данные из базы данных
+                # Замена меток в документе на соответствующие данные
                 for paragraph in doc.paragraphs:
                     for run in paragraph.runs:
                         text = run.text
-                        # print(text)
                         if 'date' in text:
                             run.text = text.replace('date', datetime.now().strftime('%d'))
                         elif 'month' in text:
@@ -307,19 +287,15 @@ class MainMenuWidget(QWidget):
                                         run.text = text.replace('FIOuser', f'{second_name} {first_name} {patronymic}')
                                     elif 'userphone' in text:
                                         run.text = text.replace('userphone', phone_number)
-                # Замена метки coursename в документе
                 for table in doc.tables:
                     for row in table.rows:
                         for cell in row.cells:
                             cell.text = cell.text.replace('coursename', course_name)
 
-            # Формирование пути для сохранения договора
             output_path = f'C:/Users/Александр/PycharmProjects/Course_app/основные файлы/Договор_{new_contract_id}.docx'
 
-            # Сохранение документа
             doc.save(output_path)
 
-            # Обновление информации о договоре с файлом в базе данных
             with open(output_path, 'rb') as file:
                 file_data = file.read()
             cursor.execute(
@@ -327,13 +303,11 @@ class MainMenuWidget(QWidget):
                 (psycopg2.Binary(file_data), new_contract_id)
             )
 
-            # Подтверждение транзакции
             connection.commit()
 
             print(f"Договор успешно сохранен в базе данных с номером {new_contract_id}")
             self.clear_listener_selection()
 
-            # Обновление статуса заявки в базе данных
             cursor.execute('UPDATE "Requests" SET status = TRUE WHERE request_id = %s', (request_id,))
             connection.commit()
 
@@ -348,23 +322,19 @@ class MainMenuWidget(QWidget):
             close_db_connect(connection, cursor)
 
     def reject_request(self):
-        # Проверка, выбрана ли заявка
         if not self.is_request_selected:
             QMessageBox.warning(self, 'Предупреждение', 'Выберите заявку перед отказом')
             return
 
         try:
-            # Получение данных о заявке
             request_id = self.requests_list.currentItem().data(1)
 
-            # Удаление заявки из базы данных
             connection = connect()
             cursor = connection.cursor()
             cursor.execute('DELETE FROM "Requests" WHERE request_id = %s', (request_id,))
             connection.commit()
             print(f"Заявка с ID {request_id} успешно удалена")
 
-            # Очистка деталей после удаления заявки
             self.clear_listener_selection()
             self.update_requests()
 
@@ -376,8 +346,8 @@ class MainMenuWidget(QWidget):
             close_db_connect(connection, cursor)
 
     def create_listeners_page(self):
-        listeners_page = ListenersPage(self)  # Создаем объект ListenersPage
-        self.pages.addWidget(listeners_page)  # Добавляем его в QStackedWidget
+        listeners_page = ListenersPage(self)
+        self.pages.addWidget(listeners_page)
 
     def create_teachers_page(self):
         teachers_page = TeachersPage(self)

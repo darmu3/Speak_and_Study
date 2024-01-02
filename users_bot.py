@@ -4,13 +4,11 @@ import io
 import re
 from conn_db import connect, close_db_connect
 
-# Считываем токен из файла
 with open("token.txt", "r") as file:
     token = file.read().strip()
 
 bot = telebot.TeleBot(token)
 
-# Исходная клавиатура
 keyboard = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
 button_courses = types.KeyboardButton('Курсы')
 button_teachers = types.KeyboardButton('Преподаватели')
@@ -19,7 +17,6 @@ button_language = types.KeyboardButton('Смена языка')
 button_review = types.KeyboardButton('Оставить отзыв')
 keyboard.add(button_courses, button_teachers, button_enroll, button_language, button_review)
 
-# Клавиатура без кнопок при активной операции
 empty_keyboard = types.ReplyKeyboardRemove(selective=False)
 
 # Словарь для хранения данных пользователя перед подачей заявки
@@ -27,7 +24,6 @@ user_data = {}
 is_operation_active = False
 
 
-# Функция для получения информации о преподавателях из БД
 def get_teachers(offset=0, limit=5):
     connection = connect()
     cursor = connection.cursor()
@@ -44,7 +40,6 @@ def get_teachers(offset=0, limit=5):
         close_db_connect(connection, cursor)
 
 
-# Функция для получения информации о курсах из БД
 def get_courses():
     connection = connect()
     cursor = connection.cursor()
@@ -64,7 +59,6 @@ def get_available_places(course_id):
     cursor = connection.cursor()
 
     try:
-        # Получите информацию о курсе из базы данных
         cursor.execute('SELECT available_places FROM "Courses" WHERE course_id = %s;', (course_id,))
         result = cursor.fetchone()
 
@@ -84,7 +78,6 @@ def get_enrolled_users_count(course_id):
     cursor = connection.cursor()
 
     try:
-        # Получите количество записей в usercourses для указанного курса
         cursor.execute('SELECT COUNT(user_id) FROM "usercourses" WHERE course_id = %s;', (course_id,))
         result = cursor.fetchone()
 
@@ -129,6 +122,16 @@ def handle_enroll(message):
     show_all_courses_for_enrollment(user_chat_id)
 
 
+@bot.message_handler(func=lambda message: message.text == 'Оставить отзыв')
+def handle_review(message):
+    global is_operation_active
+    if is_operation_active:
+        bot.send_message(message.chat.id, 'Началось выполнение операции.', reply_markup=empty_keyboard)
+    else:
+        user_chat_id = message.chat.id
+        show_all_courses_for_review(user_chat_id)
+
+
 def show_all_courses_for_enrollment(chat_id):
     courses = get_courses()
     global is_operation_active
@@ -145,25 +148,20 @@ def show_all_courses_for_enrollment(chat_id):
                    course in courses]
         keyboard_courses.add(*buttons)
 
-        # Отправляем сообщение с выбором курса
         message = bot.send_message(chat_id, message_text, reply_markup=keyboard_courses)
 
-        # Store the message ID in the user_data
         user_data['course_messages_for_enrollment'] = [message.message_id]
     else:
         bot.send_message(chat_id, 'Курсы закончились')
 
 
-# Внесем изменения в обработчик callback_query для выбора курса при подаче заявки
 @bot.callback_query_handler(func=lambda call: call.data.startswith('enrollment_course_selection:'))
 def callback_enrollment_course_selection(call):
     course_name = call.data.split(':')[1]
     user_data['course'] = course_name
 
-    # Получите course_id для выбранного курса
     course_id = get_course_id(course_name)
 
-    # Получите количество свободных мест и количество уже записанных пользователей
     available_places = get_available_places(course_id)
     enrolled_users_count = get_enrolled_users_count(course_id)
 
@@ -177,17 +175,13 @@ def callback_enrollment_course_selection(call):
 
 
 def clear_previous_messages(chat_id):
-    # Получаем идентификаторы всех сообщений с курсами и "Выберите действие: Еще 5 курсов"
     course_messages = user_data.get('course_messages_for_enrollment', [])
-    action_messages = user_data.get('action_messages_for_enrollment', [])
 
     # Удаляем все сообщения
-    for message_id in course_messages + action_messages:
+    for message_id in course_messages:
         bot.delete_message(chat_id, message_id)
 
-    # Clear the lists in user_data
     user_data['course_messages_for_enrollment'] = []
-    user_data['action_messages_for_enrollment'] = []
 
 
 def process_first_name(message):
@@ -245,10 +239,8 @@ def submit_enrollment(chat_id):
     cursor = connection.cursor()
 
     try:
-        # Получите chat_id из сообщения пользователя
         user_chat_id = chat_id
 
-        # Вставьте данные заявки в базу данных, включая chat_id
         cursor.execute(
             'INSERT INTO "Requests" (first_name, second_name, patronymic, age, phone_number, course_id) VALUES (%s, '
             '%s, %s, %s, %s, %s) RETURNING request_id;',
@@ -258,10 +250,8 @@ def submit_enrollment(chat_id):
         request_id = cursor.fetchone()[0]
         connection.commit()
 
-        # Отправьте сообщение о подаче заявки
         bot.send_message(chat_id, 'Заявка успешно подана!', reply_markup=keyboard)
 
-        # Вызовите функцию для создания договора и его отправки
         send_contract_loop(user_chat_id, request_id)
 
     except Exception as e:
@@ -273,7 +263,6 @@ def submit_enrollment(chat_id):
 
 def send_contract_loop(chat_id, request_id):
     while not send_contract(chat_id, request_id):
-        # Если отправка не удалась, попробуйте снова, пока не будет успешной
         pass
 
 
@@ -282,37 +271,30 @@ def send_contract(chat_id, request_id):
     cursor = connection.cursor()
 
     try:
-        # Получите информацию о договоре по request_id из базы данных
         cursor.execute('SELECT contract_file FROM "Contracts" WHERE request_id = %s;', (request_id,))
         result = cursor.fetchone()
 
         if result and result[0]:
-            # Отправьте договор пользователю
-            contract_bytes = bytes(result[0])  # Получаем байты из bytea
+            contract_bytes = bytes(result[0])
             contract_file = io.BytesIO(contract_bytes)
-            contract_file.name = 'contract.docx'  # Имя файла
+            contract_file.name = 'contract.docx'
 
-            # Создаем Inline-кнопки
             keyboard = types.InlineKeyboardMarkup(row_width=2)
             sign_button = types.InlineKeyboardButton('Подписать.', callback_data=f'sign:{request_id}')
             decline_button = types.InlineKeyboardButton("Отказаться", callback_data=f'decline:{request_id}')
             keyboard.add(sign_button, decline_button)
 
-            # Отправляем документ с кнопками
             message = bot.send_document(chat_id, contract_file, reply_markup=keyboard,
                                         caption="Пожалуйста, подпишите документ:")
 
-            # Записываем в словарь данные о последнем отправленном сообщении с договором
             user_data['last_contract_message'] = message.message_id
-            return True  # Успешная отправка договора
+            return True
         else:
-            # bot.send_message(chat_id, "Договор не найден.")
-            return False  # Договор не найден
+            return False
 
     except Exception as e:
         print(f"Error: {e}")
-        # bot.send_message(chat_id, "Произошла ошибка при отправке договора.")
-        return False  # Ошибка при отправке договора
+        return False
     finally:
         close_db_connect(connection, cursor)
 
@@ -332,10 +314,8 @@ def callback_decline(call):
 
 
 def hide_buttons_after_action(chat_id):
-    # Получаем идентификаторы последнего сообщения с договором
     last_contract_message_id = user_data.get('last_contract_message')
 
-    # Удаляем кнопки из сообщения
     if last_contract_message_id:
         bot.edit_message_reply_markup(chat_id, last_contract_message_id, reply_markup=None)
 
@@ -345,7 +325,6 @@ def sign_contract(chat_id, request_id):
     cursor = connection.cursor()
 
     try:
-        # Копируем данные из Requests в Users
         cursor.execute(
             'INSERT INTO "Users" (first_name, second_name, age, patronymic, phone_number) '
             'SELECT first_name, second_name, age, patronymic, phone_number FROM "Requests" WHERE request_id = %s '
@@ -353,11 +332,9 @@ def sign_contract(chat_id, request_id):
         )
         user_id = cursor.fetchone()[0]
 
-        # Обновляем signed в Contracts
         cursor.execute('UPDATE "Contracts" SET signed = TRUE, user_id = %s WHERE request_id = %s RETURNING user_id;',
                        (user_id, request_id))
 
-        # Заносим данные о курсе в usercourses
         cursor.execute('INSERT INTO "usercourses" (user_id, course_id) SELECT %s, course_id FROM "Requests" WHERE '
                        'request_id = %s;', (user_id, request_id))
 
@@ -376,7 +353,6 @@ def decline_contract(chat_id, request_id):
     cursor = connection.cursor()
 
     try:
-        # Удаляем контракт
         cursor.execute('DELETE FROM "Contracts" WHERE request_id = %s;', (request_id,))
 
         connection.commit()
@@ -423,12 +399,10 @@ def show_next_teachers_button(chat_id, offset):
             bot.send_message(chat_id, teacher_info)
 
         if len(teachers) == 5:
-            # Показываем кнопку "Следующие 5 преподавателей", если есть еще записи
             button_next_teachers = types.InlineKeyboardButton('Следующие 5 преподавателей',
                                                               callback_data='next_teachers')
             keyboard_next_teachers = types.InlineKeyboardMarkup().add(button_next_teachers)
 
-            # Увеличиваем смещение только если есть еще преподаватели
             offset += 5
             bot.send_message(chat_id, f"Выберите действие: {offset}", reply_markup=keyboard_next_teachers)
         else:
@@ -437,7 +411,6 @@ def show_next_teachers_button(chat_id, offset):
         bot.send_message(chat_id, "Преподаватели закончились")
 
 
-# Update the show_next_courses_button function
 def show_all_courses_button(chat_id):
     courses = get_courses()
 
@@ -451,7 +424,6 @@ def show_all_courses_button(chat_id):
 
         message = bot.send_message(chat_id, message_text, reply_markup=keyboard)
 
-        # Store the message ID in the user_data
         user_data['course_messages_for_enrollment'] = [message.message_id]
     else:
         bot.send_message(chat_id, 'Курсы закончились')
@@ -475,16 +447,6 @@ def get_teacher_name(teacher_id):
         close_db_connect(connection, cursor)
 
 
-@bot.message_handler(func=lambda message: message.text == 'Оставить отзыв')
-def handle_review(message):
-    global is_operation_active
-    if is_operation_active:
-        bot.send_message(message.chat.id, 'Началось выполнение операции.', reply_markup=empty_keyboard)
-    else:
-        user_chat_id = message.chat.id
-        show_all_courses_for_review(user_chat_id)
-
-
 def show_all_courses_for_review(chat_id):
     courses = get_courses()
     global is_operation_active
@@ -506,7 +468,6 @@ def show_all_courses_for_review(chat_id):
         bot.send_message(chat_id, "Курсы закончились")
 
 
-# Внесем изменения в обработчик callback_query для кнопки "Отзыв" при выборе курса
 @bot.callback_query_handler(func=lambda call: call.data.startswith('review_course_selection:'))
 def callback_review_course_selection(call):
     course_name = call.data.split(':')[1]
@@ -546,10 +507,8 @@ def submit_review(chat_id, review_text, rating):
     cursor = connection.cursor()
 
     try:
-        # Получите course_id из user_data
         course_id = get_course_id(user_data['course'])
 
-        # Вставьте данные отзыва в базу данных
         cursor.execute(
             'INSERT INTO "Review" (review_text, rating, course_id) VALUES (%s, %s, %s) RETURNING review_id;',
             (review_text, rating, course_id)

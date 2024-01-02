@@ -4,6 +4,7 @@ from qt_material import apply_stylesheet
 
 from main_menu import MainMenuWidget
 
+
 class MyApp(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -34,6 +35,7 @@ class MyApp(QMainWindow):
 
         # Устанавливаем окно по центру
         self.move(x, y)
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
